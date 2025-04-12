@@ -8,33 +8,27 @@ import { setAuth } from "../../feature/user/userSlice";
 import { enqueueSnackbar } from "notistack";
 
 const Login = () => {
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    //validation
+    // Validation
     if (!email || !password) {
-      enqueueSnackbar("Please fill all the fileds!", {
+      enqueueSnackbar("Please fill all the fields!", {
         variant: "warning",
-        anchorOrigin: {
-          vertical: "top",
-          horizontal: "center",
-        },
+        anchorOrigin: { vertical: "top", horizontal: "center" },
       });
       return;
     }
 
     if (!isValidEmail(email)) {
-      enqueueSnackbar("Please enter a valid email-id!", {
+      enqueueSnackbar("Please enter a valid email address!", {
         variant: "warning",
-        anchorOrigin: {
-          vertical: "top",
-          horizontal: "center",
-        },
+        anchorOrigin: { vertical: "top", horizontal: "center" },
       });
       return;
     }
@@ -42,25 +36,23 @@ const Login = () => {
     try {
       setLoading(true);
       const { data } = await login({ email, password });
-      //set user data in redux store
-      dispatch(setAuth(data));
 
-      enqueueSnackbar(data.message, {
+      // Set user data in redux store
+      dispatch(setAuth(data.user));
+
+      enqueueSnackbar(data.message || "Login successful!", {
         variant: "success",
-        anchorOrigin: {
-          vertical: "top",
-          horizontal: "center",
-        },
+        anchorOrigin: { vertical: "top", horizontal: "center" },
       });
     } catch (error) {
       console.log(error);
-      enqueueSnackbar(error.response.data.message, {
-        variant: "error",
-        anchorOrigin: {
-          vertical: "top",
-          horizontal: "center",
-        },
-      });
+      enqueueSnackbar(
+        error?.response?.data?.message || "Login failed!",
+        {
+          variant: "error",
+          anchorOrigin: { vertical: "top", horizontal: "center" },
+        }
+      );
     } finally {
       setLoading(false);
       setEmail("");
@@ -69,8 +61,8 @@ const Login = () => {
   };
 
   return (
-    <div className="max-w-sm p-4  rounded-lg sm:p-6 md:p-8 bg-black-700 w-[100%] ">
-      <form className="space-y-6" action="#">
+    <div className="max-w-sm p-4 rounded-lg sm:p-6 md:p-8 bg-black-700 w-full">
+      <form className="space-y-6" onSubmit={handleLogin}>
         <h5 className="text-xl font-medium text-white text-center">
           Sign in to our platform
         </h5>
@@ -97,27 +89,17 @@ const Login = () => {
           />
         </div>
         <div className="flex items-start">
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="remember"
-                type="checkbox"
-                value=""
-                className="w-4 h-4 border border-gray-300 rounded  focus:ring-3 focus:ring-blue-300 bg-gray-700 border-gray-600 focus:ring-blue-600 ring-offset-gray-800 focus:ring-offset-gray-800"
-              />
-            </div>
-
-            <label
-              for="remember"
-              className="ms-2 text-sm font-medium  text-gray-300"
-            >
-              Remember me
-            </label>
+          <div className="flex items-center h-5">
+            <input
+              id="remember"
+              type="checkbox"
+              className="w-4 h-4 border border-gray-300 rounded bg-gray-700 focus:ring-blue-600"
+            />
           </div>
-          <a
-            href="#"
-            className="ms-auto text-sm  hover:underline text-indigo-500"
-          >
+          <label htmlFor="remember" className="ms-2 text-sm text-gray-300">
+            Remember me
+          </label>
+          <a href="#" className="ms-auto text-sm text-indigo-500 hover:underline">
             Forgot Password?
           </a>
         </div>
@@ -128,7 +110,7 @@ const Login = () => {
         />
         <div className="text-sm font-medium text-gray-300">
           Not registered?
-          <Link to="/register" className="hover:underline text-indigo-500 ml-1">
+          <Link to="/register" className="text-indigo-500 hover:underline ml-1">
             Create account
           </Link>
         </div>
