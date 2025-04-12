@@ -60,7 +60,7 @@ app.use(mongoSanitize()); // secures the mongoDb datbase
 app.use(express.json());
 app.use(cors({
   credentials: true,
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://mer-nproject-client.vercel.app']
+  origin: ['https://mer-nproject-client.vercel.app', 'http://localhost:3000', 'http://localhost:3001']
 }));
 app.use(cookieParser());
 app.use(morgan("dev"));
