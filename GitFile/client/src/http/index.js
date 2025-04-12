@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://mer-nproject-gamma.vercel.app/api/v1",
+  baseURL: "https://mer-nproject-gamma.vercel.app/api/v1", // ✅ already includes /api/v1
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -10,22 +10,22 @@ const api = axios.create({
   },
 });
 
-// Auth API's
+// ✅ Auth API's
 export const login = (data) => api.post("/auth/login", data);
 export const register = (data) => api.post("/auth/register", data);
 export const getUser = () => api.get("/user/get-user");
 export const logout = () => api.get("/auth/logout");
 
-// Job API's
+// ✅ Job API's
 export const getJobs = () => api.get("/job/get-jobs");
 export const addJob = (data) => api.post("/job/create-job", data);
-export const deleteJob = (data) => api.delete(`/job/delete-job/${data}`);
+export const deleteJob = (id) => api.delete(`/job/delete-job/${id}`);
 export const filterJobs = (params) =>
   api.get(
     `/job/get-jobs?page=${params.page}&status=${params.status}&workType=${params.workType}&sort=${params.sort}&search=${params.search}`
   );
 
-// Response Interceptor for Refreshing Token
+// ✅ Response Interceptor for Refreshing Token
 api.interceptors.response.use(
   (config) => config,
   async (error) => {
@@ -47,3 +47,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+
