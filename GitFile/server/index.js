@@ -22,16 +22,16 @@ connectDb();
 
 const app = express();
 
-// CORS
+// CORS Middleware
 app.use(
   cors({
     origin: [
-      "https://mer-nproject-client.vercel.app",
-      "http://localhost:3000",
-      "http://localhost:3001"
+      "https://mer-nproject-client.vercel.app", // Production frontend URL
+      "http://localhost:3000",  // Local development
+      "http://localhost:3001",  // Another local development (if necessary)
     ],
-    credentials: true,
-    optionsSuccessStatus: 200
+    credentials: true,  // Allow cookies to be sent with requests
+    optionsSuccessStatus: 200,
   })
 );
 
@@ -45,21 +45,21 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// Swagger
+// Swagger Setup
 const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
       title: "Job Portal Application",
-      description: "Node Expressjs Job Portal Application"
+      description: "Node Expressjs Job Portal Application",
     },
     servers: [
       {
-        url: "https://mer-nproject-gamma.vercel.app"
-      }
-    ]
+        url: "https://mer-nproject-gamma.vercel.app",  // Change this URL accordingly
+      },
+    ],
   },
-  apis: ["./routes/*.js"]
+  apis: ["./routes/*.js"],
 };
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use("/api-doc", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -71,7 +71,7 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/job", jobsRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ message: "job-portal main api end-point" });
+  res.json({ message: "Job-portal main API end-point" });
 });
 
 // Error Handler
