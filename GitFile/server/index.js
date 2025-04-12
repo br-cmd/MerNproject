@@ -1,4 +1,4 @@
-// ======= server.js =======
+// ====== server.js (No Authentication Version) ======
 import express from "express";
 import dotenv from "dotenv";
 import colors from "colors";
@@ -13,8 +13,6 @@ import swaggerJSDoc from "swagger-jsdoc";
 
 import connectDb from "./config/db.js";
 import testRoutes from "./routes/testRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
 import jobsRoutes from "./routes/jobsRoute.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 
@@ -23,107 +21,64 @@ connectDb();
 
 const app = express();
 
-// ✅ CORS Fix for Cookies on Vercel
+// CORS
 app.use(
   cors({
-    origin: "https://mer-nproject-client.vercel.app",
+    origin: ["https://mer-nproject-client.vercel.app", "http://localhost:3000"],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ Middleware
+// Security Middleware
 app.use(helmet());
 app.use(xss());
 app.use(mongoSanitize());
+
+// General Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-// ✅ Swagger
+// Swagger Docs
 const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Job Portal Application",
-      description: "Node Expressjs Job Portal Application",
+      title: "Job Portal (No Auth)",
+      description: "Job Portal API Documentation (No Authentication)"
     },
     servers: [{ url: "https://mer-nproject-gamma.vercel.app" }],
   },
-  apis: ["./routes/*.js"],
+  apis: ["./routes/*.js"]
 };
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use("/api-doc", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// ✅ Routes
+// Routes
 app.use("/api/v1/test", testRoutes);
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/job", jobsRoutes);
 
-// ✅ Root
-app.get("/", (req, res) => {
-  res.json({ message: "job-portal main api end-point" });
+// Dummy user endpoint for frontend
+app.get("/api/v1/user/get-user", (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: {
+      name: "Guest User",
+      email: "guest@example.com",
+      role: "user"
+    },
+  });
 });
 
-// ✅ Error Handler
+// Root
+app.get("/", (req, res) => {
+  res.json({ message: "Job Portal API (No Auth)" });
+});
+
+// Error Middleware
 app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(
-    `Node Server Running in ${process.env.DEV_MODE} on Port ${PORT}`.bgCyan.white
-  );
+  console.log(`Server running on PORT ${PORT}`.bgMagenta.white);
 });
-
-
-// ======= utils/tokenUtils.js =======
-import jwt from "jsonwebtoken";
-import RefreshModel from "../models/refresh-model.js";
-
-const generateToken = (payload) => {
-  const accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: "15m",
-  });
-
-  const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: "1y",
-  });
-
-  return { accessToken, refreshToken };
-};
-
-const storeRefreshToken = async (token, userId) => {
-  await RefreshModel.create({ token, userId });
-};
-
-const verifyAccessToken = (token) => {
-  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-};
-
-const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-};
-
-const findRefreshToken = async (userId, token) => {
-  return await RefreshModel.findOne({ userId, token });
-};
-
-const updateRefreshToken = async (userId, token) => {
-  return await RefreshModel.updateOne({ userId }, { token });
-};
-
-const removeTokenFromDb = async (refreshToken) => {
-  return await RefreshModel.deleteOne({ token: refreshToken });
-};
-
-export {
-  generateToken,
-  storeRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken,
-  findRefreshToken,
-  updateRefreshToken,
-  removeTokenFromDb,
-};
