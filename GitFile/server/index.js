@@ -1,4 +1,4 @@
-// ====== server.js (No Authentication Version) ======
+// ====== server.js (Login Re-enabled, No Tokens) ======
 import express from "express";
 import dotenv from "dotenv";
 import colors from "colors";
@@ -14,6 +14,7 @@ import swaggerJSDoc from "swagger-jsdoc";
 import connectDb from "./config/db.js";
 import testRoutes from "./routes/testRoutes.js";
 import jobsRoutes from "./routes/jobsRoute.js";
+import authRoutes from "./routes/authRoutes.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 
 dotenv.config();
@@ -44,8 +45,8 @@ const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Job Portal (No Auth)",
-      description: "Job Portal API Documentation (No Authentication)"
+      title: "Job Portal (Login Only, No Tokens)",
+      description: "Job Portal API with login but no JWT authentication"
     },
     servers: [{ url: "https://mer-nproject-gamma.vercel.app" }],
   },
@@ -57,8 +58,9 @@ app.use("/api-doc", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Routes
 app.use("/api/v1/test", testRoutes);
 app.use("/api/v1/job", jobsRoutes);
+app.use("/api/v1/auth", authRoutes);
 
-// Dummy user endpoint for frontend
+// Dummy user endpoint
 app.get("/api/v1/user/get-user", (req, res) => {
   res.status(200).json({
     success: true,
@@ -72,7 +74,7 @@ app.get("/api/v1/user/get-user", (req, res) => {
 
 // Root
 app.get("/", (req, res) => {
-  res.json({ message: "Job Portal API (No Auth)" });
+  res.json({ message: "Job Portal API (Login Only, No Auth)" });
 });
 
 // Error Middleware
