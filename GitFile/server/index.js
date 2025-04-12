@@ -22,11 +22,11 @@ connectDb();
 
 const app = express();
 
-// CORS
+// CORS - updated to allow cross-site cookies
 app.use(
   cors({
     origin: ["https://mer-nproject-client.vercel.app", "http://localhost:3000"],
-    credentials: true,
+    credentials: true, // ✅ allow cookies from cross-origin
   })
 );
 
