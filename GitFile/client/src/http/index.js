@@ -31,7 +31,7 @@ api.interceptors.response.use((config) => {
       originalRequest._isRetry = true;
 
       try {
-          await axios.get(`http://localhost:8080/api/v1/auth/refresh`, {
+          await axios.get(`https://mer-nproject-gamma.vercel.app/api/v1/auth/refresh`, {
               withCredentials : true
           });
 
