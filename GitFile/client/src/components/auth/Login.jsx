@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, FormInput, FormLabel } from "../shared";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "../../http";
 import { isValidEmail } from "../../utils";
 import { useDispatch } from "react-redux";
@@ -12,6 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -37,13 +38,16 @@ const Login = () => {
       setLoading(true);
       const { data } = await login({ email, password });
 
-      // Set user data in redux store
+      // Store user info in Redux (no token)
       dispatch(setAuth(data.user));
 
       enqueueSnackbar(data.message || "Login successful!", {
         variant: "success",
         anchorOrigin: { vertical: "top", horizontal: "center" },
       });
+
+      // Redirect to homepage
+      navigate("/");
     } catch (error) {
       console.log(error);
       enqueueSnackbar(
@@ -61,7 +65,7 @@ const Login = () => {
   };
 
   return (
-    <div className="max-w-sm p-4 rounded-lg sm:p-6 md:p-8 bg-black-700 w-full">
+    <div className="max-w-sm p-4 rounded-lg sm:p-6 md:p-8 bg-black-700 w-[100%]">
       <form className="space-y-6" onSubmit={handleLogin}>
         <h5 className="text-xl font-medium text-white text-center">
           Sign in to our platform
