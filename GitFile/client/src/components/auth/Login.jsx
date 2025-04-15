@@ -1,126 +1,204 @@
-import React, { useState } from "react";
-import { Button, FormInput, FormLabel } from "../shared";
-import { Link, useNavigate } from "react-router-dom";
-import { login } from "../../http";
-import { isValidEmail } from "../../utils";
-import { useDispatch } from "react-redux";
-import { setAuth } from "../../feature/user/userSlice";
-import { enqueueSnackbar } from "notistack";
+import userModel from "../models/userModel.js";
+import { findRefreshToken, generateToken, removeTokenFromDb, storeRefreshToken, updateRefreshToken, verifyRefreshToken } from "../utils/index.js";
 
-const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+export const registerController = async (req, res, next) => {
+  const { name, email, password } = req.body;
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  //validate
+  if (!name || !email || !password) {
+    next("Please fill in all the details!");
+  }
 
-    // Validation
-    if (!email || !password) {
-      enqueueSnackbar("Please fill all the fields!", {
-        variant: "warning",
-        anchorOrigin: { vertical: "top", horizontal: "center" },
-      });
-      return;
-    }
+  const existingUser = await userModel.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json({
+      auth: false,
+      message: "Email already exists!",
+    });
+  }
+  let user;
+  try {
+     user = await userModel.create({ name, email, password });
 
-    if (!isValidEmail(email)) {
-      enqueueSnackbar("Please enter a valid email address!", {
-        variant: "warning",
-        anchorOrigin: { vertical: "top", horizontal: "center" },
-      });
-      return;
-    }
+  } catch (error) {
+    console.log(error);
+  }
+ 
 
-    try {
-      setLoading(true);
-      const { data } = await login({ email, password });
-
-      // Store user info in Redux (no token)
-      dispatch(setAuth(data.user));
-
-      enqueueSnackbar(data.message || "Login successful!", {
-        variant: "success",
-        anchorOrigin: { vertical: "top", horizontal: "center" },
-      });
-
-      // Redirect to homepage
-      navigate("/");
-    } catch (error) {
-      console.log(error);
-      enqueueSnackbar(
-        error?.response?.data?.message || "Login failed!",
-        {
-          variant: "error",
-          anchorOrigin: { vertical: "top", horizontal: "center" },
-        }
-      );
-    } finally {
-      setLoading(false);
-      setEmail("");
-      setPassword("");
-    }
-  };
-
-  return (
-    <div className="max-w-sm p-4 rounded-lg sm:p-6 md:p-8 bg-black-700 w-[100%]">
-      <form className="space-y-6" onSubmit={handleLogin}>
-        <h5 className="text-xl font-medium text-white text-center">
-          Sign in to our platform
-        </h5>
-        <div>
-          <FormLabel htmlFor="email" labelHeading="Your email" />
-          <FormInput
-            type="email"
-            name="email"
-            id="email"
-            value={email}
-            setState={setEmail}
-            placeholder="name@company.com"
-          />
-        </div>
-        <div>
-          <FormLabel htmlFor="password" labelHeading="Your password" />
-          <FormInput
-            type="password"
-            name="password"
-            id="password"
-            value={password}
-            setState={setPassword}
-            placeholder="••••••••"
-          />
-        </div>
-        <div className="flex items-start">
-          <div className="flex items-center h-5">
-            <input
-              id="remember"
-              type="checkbox"
-              className="w-4 h-4 border border-gray-300 rounded bg-gray-700 focus:ring-blue-600"
-            />
-          </div>
-          <label htmlFor="remember" className="ms-2 text-sm text-gray-300">
-            Remember me
-          </label>
-          <a href="#" className="ms-auto text-sm text-indigo-500 hover:underline">
-            Forgot Password?
-          </a>
-        </div>
-        <Button
-          content="Login to your account"
-          handleInput={handleLogin}
-          isloading={loading}
-        />
-        <div className="text-sm font-medium text-gray-300">
-          Not registered?
-          <Link to="/register" className="text-indigo-500 hover:underline ml-1">
-            Create account
-          </Link>
-        </div>
-      </form>
-    </div>
-  );
+  res.status(201).json({
+    auth: true,
+    message: "User created successfully",
+    user: {
+      name: user.name,
+      lastName: user.lastName,
+      email: user.email,
+      location: user.location,
+    },
+  });
 };
 
-export default Login;
+export const loginController = async (req, res, next) => {
+  const { email, password } = req.body;
+  //validate
+  if (!email || !password) {
+    next("Please provide all Fields");
+  }
+
+  //find user by email
+  const user = await userModel.findOne({ email }).select("+password");
+
+  if (!user) {
+    next("Invalid Credentials!");
+  }
+
+  //compare password
+  const isMatch = await user.comparePassword(password);
+
+  if (!isMatch) {
+    next("Invalid Credentials!");
+  }
+
+  user.password = undefined;
+
+  // Token Generation start -----------------------
+
+  const { accessToken, refreshToken } = generateToken({ _id: user._id });
+
+  // storing refresh token in db
+  await storeRefreshToken(refreshToken, user._id);
+
+  // send token to cookie
+  res.cookie('refreshToken', refreshToken, {
+    maxAge: 1000*60*60*24*30,
+    httpOnly: true,
+    sameSite: "none",
+    secure: true
+
+  });
+
+  res.cookie('accessToken', accessToken, {
+    maxAge: 1000*60*60*24*30,
+    httpOnly: true,
+    sameSite: "none",
+    secure: true
+
+  });
+
+  // Token Generation End -----------------------
+
+
+  res.status(200).json({
+    auth: true,
+    message: "Login successful",
+    user
+  });
+};
+
+export const refresh = async (req, res) => {
+   //------------ Refresh token logic start ------------------
+
+  // 1. get refresh-token from cookies
+
+  const {refreshToken: refreshTokenFromCookie} = req.cookies;
+
+  //2. check validity of token
+  let userData;
+
+  try {
+    userData = await verifyRefreshToken(refreshTokenFromCookie);
+  } catch (error) {
+    console.log(error);
+    res.status(401);
+    throw new Error('Invalid Token!');
+  }
+
+  // 3. check validity of user
+
+  let validUser;
+
+  try {
+    validUser = await userModel.findOne({_id: userData._id});
+
+    if(!validUser){
+      res.status(404);
+
+      throw new Error('User not found!')
+
+    }
+    
+  } catch (error) {
+    res.status(500);
+    throw new Error("Internal Error")
+  }
+  
+  //4. Check token present in db or not
+  try {
+    const token = findRefreshToken(userData._id, refreshTokenFromCookie);
+
+    if(!token){
+      res.status(404);
+      throw new Error('Invalid token!');
+    }
+  } catch (error) {
+    res.status(500);
+    throw new Error('Internal Error!');
+    
+  }
+
+  //5. generate new tokens
+  const { accessToken, refreshToken } = generateToken({ _id: validUser._id });
+
+  //6. update refresh token in db
+    try {
+      updateRefreshToken(userData._id, refreshToken);
+    } catch (error) {
+      res.status(500);
+      throw new Error('Internal Error!')
+    }
+
+    // store in cookie
+    res.cookie('refreshToken', refreshToken, {
+      maxAge: 1000*60*60*24*30,
+      httpOnly: true,
+      sameSite: "none",
+      secure: true
+    });
+
+    res.cookie('accessToken', accessToken, {
+      maxAge: 1000*60*60*24*30,
+      httpOnly: true,
+      sameSite: "none",
+      secure: true
+    })
+
+    res.status(200).json({
+      auth: true,
+      validUser
+    });
+}
+
+export const logoutController = async (req, res) => {
+
+  //find user by email
+  const user = await userModel.findOne({ _id: req.user._id });
+
+  if (!user) {
+    next("You can't perform this action!");
+  }
+    
+  // get refresh-token from cookies
+    const {refreshToken} = req.cookies;
+    
+    //remove token from db
+    removeTokenFromDb(refreshToken);
+
+    //delete cookies
+    res.clearCookie('refreshToken', {sameSite: "none", secure: true});
+    res.clearCookie('accessToken', {sameSite: "none", secure: true});
+
+
+  res.status(200).json({
+    auth: false,
+    user: null,
+  });
+};
