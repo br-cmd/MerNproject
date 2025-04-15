@@ -1,86 +1,94 @@
-// ====== server.js (Login Re-enabled, No Tokens) ======
+//api documentation
+import swaggerUi from "swagger-ui-express";
+import swaggerJSDoc from "swagger-jsdoc";
+//package imports
+// const express = require("express"); - this is common js
 import express from "express";
+import "express-async-errors";
 import dotenv from "dotenv";
 import colors from "colors";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+//security imports
 import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
-import swaggerUi from "swagger-ui-express";
-import swaggerJSDoc from "swagger-jsdoc";
-
+//files import
 import connectDb from "./config/db.js";
+//routes import
 import testRoutes from "./routes/testRoutes.js";
-import jobsRoutes from "./routes/jobsRoute.js";
 import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import jobsRoutes from "./routes/jobsRoute.js";
+//middleware import
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 
+//DOT ENV config
 dotenv.config();
+
+//mongodb connection
 connectDb();
 
-const app = express();
-
-// CORS - updated to allow cross-site cookies
-app.use(
-  cors({
-    origin: ["https://mer-nproject-client.vercel.app", "http://localhost:3000"],
-    credentials: true, // ✅ allow cookies from cross-origin
-  })
-);
-
-// Security Middleware
-app.use(helmet());
-app.use(xss());
-app.use(mongoSanitize());
-
-// General Middleware
-app.use(express.json());
-app.use(cookieParser());
-app.use(morgan("dev"));
-
-// Swagger Docs
-const swaggerOptions = {
+//Swagger api config
+//swagger api options
+const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Job Portal (Login Only, No Tokens)",
-      description: "Job Portal API with login but no JWT authentication"
+      title: "Job Portal Application",
+      description: "Node Expressjs Job Portal Application",
     },
-    servers: [{ url: "https://mer-nproject-gamma.vercel.app" }],
+    servers: [
+      {
+        url: "http://localhost:8080",
+      },
+    ],
   },
-  apis: ["./routes/*.js"]
+  apis: ["./routes/*.js"],
 };
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
-app.use("/api-doc", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Routes
-app.use("/api/v1/test", testRoutes);
-app.use("/api/v1/job", jobsRoutes);
-app.use("/api/v1/auth", authRoutes);
+const spec = swaggerJSDoc(options);
 
-// Dummy user endpoint
-app.get("/api/v1/user/get-user", (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: {
-      name: "Guest User",
-      email: "guest@example.com",
-      role: "user"
-    },
-  });
-});
+//rest object
+const app = express();
 
-// Root
+//middlewares
+app.use(helmet()); // secures the header section
+app.use(xss()); // secures fron cross-side scripting attacks
+app.use(mongoSanitize()); // secures the mongoDb datbase
+app.use(express.json());
+app.use(cors({
+  credentials: true,
+  origin: ['http://localhost:3000', 'http://localhost:3001']
+}));
+app.use(cookieParser());
+app.use(morgan("dev"));
+
+//homeroute root
+app.use("/api-doc", swaggerUi.serve, swaggerUi.setup(spec));
+
+//main api endpoint
 app.get("/", (req, res) => {
-  res.json({ message: "Job Portal API (Login Only, No Auth)" });
+  res.json({ message: "job-portal main api end-point" });
 });
 
-// Error Middleware
+//routes
+app.use("/api/v1/test", testRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/job", jobsRoutes);
+
+//validation middleware
 app.use(errorMiddleware);
 
+//port
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`Server running on PORT ${PORT}`.bgMagenta.white);
+
+//listen
+app.listen(8080, () => {
+  console.log(
+    `Node Server Running in ${process.env.DEV_MODE} on Port no ${PORT} `.bgCyan
+      .white
+  );
 });
